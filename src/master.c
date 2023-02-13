@@ -32,7 +32,32 @@ int spawn(const char *program, char *arg_list[])
 
 int main()
 {
-  
+  char ip[20] = {};
+  char port[20] = {};
+  int choice;
+
+  printf("Enter execution type:\n1-Normal\n2-Server\n3-Client\n");
+  scanf("%d", &choice);
+
+  switch (choice)
+  {
+  case 1:
+    break;
+  case 2:
+  case 3:
+    printf("Enter the port (0 for default):\n");
+    scanf("%s", port);
+    printf("Enter the server IP (0 for local IP):\n");
+    scanf("%s", ip);
+    break;
+  default:
+    printf("Invalid input.\n");
+    exit(1);
+  }
+
+  char mode[2];
+  sprintf(mode, "%d", choice);
+
   // Opening semaphore:
   sem_t *sem = sem_open(SEM_PATH, O_CREAT, S_IRUSR | S_IWUSR, 1);
   if (sem == SEM_FAILED)
@@ -50,8 +75,8 @@ int main()
     exit(1);
   }
 
-  char *arg_list_A[] = {"/usr/bin/konsole", "-e", "./bin/processA", NULL};
-  char *arg_list_B[] = {"/usr/bin/konsole", "-e", "./bin/processB", NULL};
+  char *arg_list_A[] = {"/usr/bin/konsole", "-e", "./bin/processA", mode, ip, port, NULL};
+  char *arg_list_B[] = {"/usr/bin/konsole", "-e", "./bin/processB", mode, NULL};
   pid_t pid_procA = spawn("/usr/bin/konsole", arg_list_A);
   pid_t pid_procB = spawn("/usr/bin/konsole", arg_list_B);
 
