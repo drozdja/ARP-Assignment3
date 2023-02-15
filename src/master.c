@@ -75,7 +75,7 @@ int main()
     exit(1);
   }
 
-  char *arg_list_A[] = {"/usr/bin/konsole", "-e", "./bin/processA", mode, ip, port, NULL};
+  char *arg_list_A[] = {"/usr/bin/konsole", "-e", "./bin/processA", mode, port, ip, NULL};
   char *arg_list_B[] = {"/usr/bin/konsole", "-e", "./bin/processB", mode, NULL};
   pid_t pid_procA = spawn("/usr/bin/konsole", arg_list_A);
   pid_t pid_procB = spawn("/usr/bin/konsole", arg_list_B);
