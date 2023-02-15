@@ -36,6 +36,11 @@ int cmd;
 int cmd2;
 fd_set fd;
 int val;
+int x = (sizeof(client_addr));
+const struct timespec t ={
+  .tv_sec = 0,
+  .tv_nsec = 30*1e6
+};
 int spawn(const char * program, char * arg_list[]) {
 
   pid_t child_pid = fork();
@@ -179,7 +184,7 @@ int main(int argc, char *argv[])
             }
 
             // Accepting the connection
-            if ((_socket = accept(server_fd, (struct sockaddr *)& client_addr, (socklen_t *)&(sizeof(client_addr)))) < 0)
+            if ((_socket = accept(server_fd, (struct sockaddr *)& client_addr, (socklen_t *)&x)) < 0)
             {
                 sprintf(log_msg, "Accepting failed!");
             logging(log_msg);
@@ -314,6 +319,7 @@ int main(int argc, char *argv[])
                 perror("Semaphore error");
             }
         }
+      nanosleep(&t, NULL);
     }
     endwin();
     close_all(mem_size);
