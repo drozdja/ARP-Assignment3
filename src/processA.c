@@ -1,5 +1,21 @@
 #include "./../include/processA_utilities.h"
+#include <bmpfile.h>
+#include <errno.h>
+#include <sys/mman.h>
+#include <stdio.h>
+#include <fcntl.h>
+#include <semaphore.h>
+#include <signal.h>
+#include <sys/stat.h>
 #include "./../include/common.h"
+#include <time.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/select.h>
+
 //declaring variables
 int shmfd;
 char chared_data[10];
@@ -8,6 +24,36 @@ rgb_pixel_t *ptr;
 bmpfile_t *bmp;
 FILE *fd_log;
 char log_msg[200];
+int mode;
+int server_fd;
+int _socket; 
+int port;
+char buffer[10] = {0};
+char ip[15];
+struct sockaddr_in server_addr;
+struct sockaddr_in client_addr;
+int cmd;
+int cmd2;
+fd_set fd;
+int val;
+int spawn(const char * program, char * arg_list[]) {
+
+  pid_t child_pid = fork();
+
+  if(child_pid < 0) {
+    perror("Error while forking...");
+    return -1;
+  }
+
+  else if(child_pid != 0) {
+    return child_pid;
+  }
+
+  else {
+    if(execvp (program, arg_list) < 0) perror("Exec failed");
+    return -1;
+  }
+}
 
 int logging(char *log)
 {
@@ -80,6 +126,13 @@ int close_all(int mem_size) //closingshared memory and semaphore
 
 int main(int argc, char *argv[])
 {
+        mode = atoi(argv[1]);
+        if (argv[2][0] == '0'){
+            port = 3000;}
+        else 
+        {sscanf(argv[2], "%d", &port);
+        }
+        sprintf(ip, "%s", argv[3]);
     int mem_size = WIDTH * HEIGHT * sizeof(rgb_pixel_t); //shared memory size
     if (init(mem_size) != 0) //in case of failure
     {
@@ -90,7 +143,63 @@ int main(int argc, char *argv[])
     }
     sprintf(log_msg, "ProcessA started");
         logging(log_msg);
+    if (mode > 1) { //if user chose server/client method
+    
+        if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
+        {
+            sprintf(log_msg, "Socket failed!");
+            logging(log_msg);
+            perror("Socket failed!");
+        }
+        bzero((char *)&server_addr, sizeof(server_addr));
 
+        // Assigning port number and ip address
+        server_addr.sin_port = htons(port);
+        server_addr.sin_family = AF_INET;
+        
+        if (mode == 2) { //if user chose server mode
+            if (ip[0] != '0') {
+                server_addr.sin_addr.s_addr = htonl(INADDR_ANY);}
+            else {
+                server_addr.sin_addr.s_addr = inet_addr(ip);}
+            
+            if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+            {
+                sprintf(log_msg, "Binding failed!");
+            logging(log_msg);
+            perror("Binding failed!");
+            }
+
+            // Listening
+            if (listen(server_fd, 2) < 0)
+            {
+                sprintf(log_msg, "Listening failed!");
+            logging(log_msg);
+            perror("Listening failed!");
+            }
+
+            // Accepting the connection
+            if ((_socket = accept(server_fd, (struct sockaddr *)& client_addr, (socklen_t *)&(sizeof(client_addr)))) < 0)
+            {
+                sprintf(log_msg, "Accepting failed!");
+            logging(log_msg);
+            perror("Accepting failed!");
+            }
+
+   
+        } 
+        if(mode==3) { //if user chose client mode
+            server_addr.sin_addr.s_addr = inet_addr(ip);
+        
+            // Connecting to server
+            if (connect(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+            {
+                  sprintf(log_msg, "Connecting failed!");
+            logging(log_msg);
+            perror("Connecting failed!");
+            }
+        }
+    }
     // Utility variable to avoid trigger resize event on launch
     int first_resize = TRUE;
 
@@ -111,11 +220,42 @@ int main(int argc, char *argv[])
     // Infinite loop
     while (TRUE)
     {
-        // Get input in non-blocking mode
-        int cmd = getch();
+       
+        if (mode == 2) {
+            
+            FD_ZERO(&fd);
+            FD_SET(_socket, &fd);
+
+            val = select(_socket+1, &fd, NULL, NULL, 0);
+            if (val < 0 && errno != EINTR) {
+                sprintf(log_msg, "Error occured");
+        logging(log_msg);
+        perror("Error occured");
+            }
+            else if (val) {
+                if (read(_socket, buffer, sizeof(buffer)) < 0) {
+                    sprintf(log_msg, "Reading error");
+                    logging(log_msg);
+                    perror("Reading error");
+                } else {
+                    cmd = atoi(buffer);}
+            }
+            cmd2 = getch();   
+        } else {
+            cmd = getch();
+        } 
+
+        if (mode == 3) { //client mode
+            sprintf(buffer, "%d", cmd);
+            if (write(server_fd, buffer, sizeof(buffer)) < 0) {
+                 sprintf(log_msg, "Writing error");
+                    logging(log_msg);
+                    perror("Writing error");
+            }
+        }
 
         // If user resizes screen, re-draw UI...
-        if (cmd == KEY_RESIZE)
+        if (cmd == KEY_RESIZE || cmd2 == KEY_RESIZE)
         {
             if (first_resize)
             {
@@ -128,7 +268,7 @@ int main(int argc, char *argv[])
         }
 
         // Else, if user presses print button...
-        else if (cmd == KEY_MOUSE)
+        else if (cmd == KEY_MOUSE || cmd2 ==KEY_MOUSE)
         {
             if (getmouse(&event) == OK)
             {
