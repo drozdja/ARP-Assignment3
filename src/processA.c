@@ -25,10 +25,10 @@ bmpfile_t *bmp;
 FILE *fd_log;
 char log_msg[200];
 int mode;
-int server_fd;
+int serv_fd;
 int _socket; 
 int port;
-char buffer[10] = {0};
+char buf[30] = {0};
 char ip[15];
 struct sockaddr_in server_addr;
 struct sockaddr_in client_addr;
@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
         logging(log_msg);
     if (mode > 1) { //if user chose server/client method
     
-        if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
+        if ((serv_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
         {
             sprintf(log_msg, "Socket failed!");
             logging(log_msg);
@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
             else {
                 server_addr.sin_addr.s_addr = inet_addr(ip);}
             
-            if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+            if (bind(serv_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
             {
                 sprintf(log_msg, "Binding failed!");
             logging(log_msg);
@@ -176,7 +176,7 @@ int main(int argc, char *argv[])
             }
 
             // Listening
-            if (listen(server_fd, 2) < 0)
+            if (listen(serv_fd, 2) < 0)
             {
                 sprintf(log_msg, "Listening failed!");
             logging(log_msg);
@@ -184,7 +184,7 @@ int main(int argc, char *argv[])
             }
 
             // Accepting the connection
-            if ((_socket = accept(server_fd, (struct sockaddr *)& client_addr, (socklen_t *)&x)) < 0)
+            if ((_socket = accept(serv_fd, (struct sockaddr *)& client_addr, (socklen_t *)&x)) < 0)
             {
                 sprintf(log_msg, "Accepting failed!");
             logging(log_msg);
@@ -197,7 +197,7 @@ int main(int argc, char *argv[])
             server_addr.sin_addr.s_addr = inet_addr(ip);
         
             // Connecting to server
-            if (connect(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+            if (connect(serv_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
             {
                   sprintf(log_msg, "Connecting failed!");
             logging(log_msg);
@@ -238,12 +238,12 @@ int main(int argc, char *argv[])
         perror("Error occured");
             }
             else if (val) {
-                if (read(_socket, buffer, sizeof(buffer)) < 0) {
+                if (read(_socket, buf, sizeof(buf)) < 0) {
                     sprintf(log_msg, "Reading error");
                     logging(log_msg);
                     perror("Reading error");
                 } else {
-                    cmd = atoi(buffer);}
+                    cmd = atoi(buf);}
             }
             cmd2 = getch();   
         } else {
@@ -251,8 +251,8 @@ int main(int argc, char *argv[])
         } 
 
         if (mode == 3) { //client mode
-            sprintf(buffer, "%d", cmd);
-            if (write(server_fd, buffer, sizeof(buffer)) < 0) {
+            sprintf(buf, "%d", cmd);
+            if (write(serv_fd, buf, sizeof(buf)) < 0) {
                  sprintf(log_msg, "Writing error");
                     logging(log_msg);
                     perror("Writing error");
